@@ -3,26 +3,25 @@ import React, { useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useTexture, Environment, Float } from "@react-three/drei";
 import * as THREE from "three";
+import { Settings } from "lucide-react";
 interface TextureToggles {
   diffuse: boolean;
   normal: boolean;
   roughness: boolean;
-  ao: boolean;
 }
 
-interface BottleMeshProps {
+interface CardMeshProps {
   toggles: TextureToggles;
 }
 
-const BottleMesh: React.FC<BottleMeshProps> = ({ toggles }) => {
+const CardMesh: React.FC<CardMeshProps> = ({ toggles }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.PointLight>(null);
 
-  const [colorMap, normalMap, aoMap, roughnessMap] = useTexture([
-    "/images/fanta_diffuse.png",
-    "/images/fanta_normal.png",
-    "/images/fanta_ao.png",
-    "/images/fanta_roughness.png",
+  const [colorMap, normalMap, roughnessMap] = useTexture([
+    "/images/card_color.png",
+    "/images/card_normal.png",
+    "/images/card_roughness.png",
   ]);
 
   useFrame((state) => {
@@ -61,10 +60,9 @@ const BottleMesh: React.FC<BottleMeshProps> = ({ toggles }) => {
   const activeColorMap = toggles.diffuse ? colorMap : null;
   const activeNormalMap = toggles.normal ? normalMap : null;
   const activeRoughnessMap = toggles.roughness ? roughnessMap : null;
-  const activeAOMap = toggles.ao ? aoMap : null;
 
   // We add fake glass if normal is on BUT roughness is off.
-  // This fakes a full shiny bottle if we don't have the explicit roughness definitions yet.
+  // This fakes a full shiny card if we don't have the explicit roughness definitions yet.
   const shouldUseFakeGlass = toggles.normal && !toggles.roughness;
 
   return (
@@ -83,12 +81,11 @@ const BottleMesh: React.FC<BottleMeshProps> = ({ toggles }) => {
 
       <Float speed={2} rotationIntensity={0.1} floatIntensity={0.3}>
         <mesh ref={meshRef}>
-          <planeGeometry args={[3, 4]} />
+          <planeGeometry args={[2, 3.1]} />
 
           {!toggles.diffuse &&
           !toggles.normal &&
-          !toggles.roughness &&
-          !toggles.ao ? (
+          !toggles.roughness ? (
             // If all are turned off, render a pure black silhouette shape so we can still see the plane outline
             <meshBasicMaterial
               color="#111111"
@@ -117,10 +114,8 @@ const BottleMesh: React.FC<BottleMeshProps> = ({ toggles }) => {
               roughnessMap={activeRoughnessMap || undefined}
               // Base roughness (high if we have a map to mix it with, low if we don't but normal is on)
               roughness={activeRoughnessMap ? 1 : 0.2}
-              // Apply AO Map
-              aoMap={activeAOMap || undefined}
               transparent={true}
-              metalness={0.1}
+              metalness={0.}
               // The magic fallback for glassy setups
               clearcoat={shouldUseFakeGlass ? 1.0 : 0.0}
               clearcoatRoughness={0.1}
@@ -132,13 +127,13 @@ const BottleMesh: React.FC<BottleMeshProps> = ({ toggles }) => {
   );
 };
 
-export default function PhantomBottle() {
+export default function PhantomCard() {
   const [toggles, setToggles] = useState<TextureToggles>({
     diffuse: true,
     normal: true,
-    roughness: false,
-    ao: false,
+    roughness: true,
   });
+  const [showControls, setShowControls] = useState(false);
 
   const handleToggle = (key: keyof TextureToggles) => {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -156,21 +151,25 @@ export default function PhantomBottle() {
       label: "Roughness",
       desc: "Separates plastic gloss from paper matte.",
     },
-    {
-      key: "ao",
-      label: "Ambient Occlusion",
-      desc: "Adds micro-shadows directly to texture crevices.",
-    },
   ];
 
   return (
     <div className="w-full h-screen bg-[#050505] overflow-hidden relative font-sans">
       <div className="absolute top-6 left-6 z-10 flex flex-col items-start gap-4 w-80 px-4">
-        <h1 className="text-white text-xl font-bold tracking-wider opacity-80">
-          TEXTURE PIPELINE
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-white text-xl font-bold tracking-wider opacity-80">
+            TEXTURE PIPELINE
+          </h1>
+          <button
+            onClick={() => setShowControls((v) => !v)}
+            className="text-white/50 hover:text-white transition-colors"
+            aria-label="Toggle controls"
+          >
+            <Settings size={18} />
+          </button>
+        </div>
 
-        <div className="flex flex-col gap-3 bg-black/70 p-4 rounded-xl backdrop-blur-md border border-white/10 w-full">
+        <div className={`flex flex-col gap-3 bg-black/70 p-4 rounded-xl backdrop-blur-md border border-white/10 w-full transition-all duration-300 ${showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
           {controls.map((control) => {
             const isChecked = toggles[control.key as keyof TextureToggles];
             return (
@@ -184,6 +183,7 @@ export default function PhantomBottle() {
               >
                 <div className="relative flex items-center pt-1">
                   <input
+                    suppressHydrationWarning
                     type="checkbox"
                     checked={isChecked}
                     onChange={() =>
@@ -225,7 +225,7 @@ export default function PhantomBottle() {
         gl={{ alpha: false, antialias: true }}
       >
         <Suspense fallback={null}>
-          <BottleMesh toggles={toggles} />
+          <CardMesh toggles={toggles} />
         </Suspense>
       </Canvas>
     </div>
